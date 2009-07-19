@@ -73,7 +73,7 @@ sub handle_it {
     
     print $cgi->header;
     
-    unless ( !$prefix or $to_url !~ /$RE{URI}{HTTP}/ ) {
+    unless ( !$prefix or !$goes_in_queue or $to_url !~ /$RE{URI}{HTTP}/ ) {
     
         my $fh = new IO::File;
         if ($fh->open("> $dir/$goes_in_queue$now")) {
