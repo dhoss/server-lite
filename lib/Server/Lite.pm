@@ -3,19 +3,34 @@ package Server::Lite;
 use strict;
 use warnings;
 use HTTP::Server::Simple;
-use parent 'HTTP::Server::Simple::CGI';
+use parent qw/HTTP::Server::Simple::Recorder HTTP::Server::Simple::CGI/;
 use IO::Socket::SSL;
 use IO::File;
 use Regexp::Common qw /URI/;
 use DateTime;
 use FindBin qw/$Bin/;
+use Getopt::Long;
+use DateTime;
 
+my $log_file = "server-lite.log";
+my $pid_file = "server-lite.pid";
+my $port     = "80808";
 
+GetOptions(
+    "l|log=s"         => \$log_file,    
+    "pid|pidfile=s"   => \$pid_file,      
+    "p|port"          => \$port     
+);
+  
 my %dispatch = (
 
     '/do' => \&handle_it,
 
 );
+
+sub recorder_prefix {     # set the log file for recorder
+    $log_file;
+}
 
 sub net_server {
     "Net::Server::PreForkSimple";
@@ -30,6 +45,7 @@ sub handle_request {
     if (ref($handler) eq "CODE") {
          print "HTTP/1.0 200 OK\r\n";
          $handler->($cgi);
+         
          
      } else {
          print "HTTP/1.0 404 Not found\r\n";
@@ -76,22 +92,37 @@ sub handle_it {
     unless ( !$prefix or !$goes_in_queue or $to_url !~ /$RE{URI}{HTTP}/ ) {
     
         my $fh = new IO::File;
-        if ($fh->open("> $dir/$goes_in_queue$now")) {
+        my $log = new IO::File;
+        
+        if ($fh->open("> $dir/$goes_in_queue$now") and $log->open(">> $log_file") ) {
         
             print $fh "$goes_in_queue" or print $cgi->h1("File IO Error:$!");
             $fh->close;
             
+            print $log DateTime->now . "\t" . $cgi->remote_addr . "\t" . "URL: $to_url\t" .
+                  "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" or print $cgi->h1("Logging error: $!");
+            $log->close;
+            
+            
         }
+        
                       
         print $cgi->start_html('Success!'),
               $cgi->h1("Successfully handled request"),
               $cgi->end_html;
         
     } else {
-    
+      
+        my $log = new IO::File;
         print $cgi->start_html('Fail!'),
               $cgi->h1("Missing required parameters!"),
               $cgi->end_html;
+        if ( $log->open(">> $log_file") ) {
+            print $log DateTime->now . "\t" . $cgi->remote_addr . "\t" . "URL: $to_url\t" .
+                      "Prefix: $prefix \t Command: $goes_in_queue \t Status: Failed \t Query string: $cgi->query_string\n" 
+                      or print $cgi->h1("Logging error: $!");
+            $log->close;
+        }
               
     }
     

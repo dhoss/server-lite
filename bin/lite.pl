@@ -5,5 +5,5 @@ use warnings;
 use Server::Lite;
 
 ## start the server
-my $pid = Server::Lite->new($ARGV[0])->background();
+my $pid = Server::Lite->new->background();
 print "Use (sudo) kill $pid to stop server.\n";
