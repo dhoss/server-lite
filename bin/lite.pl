@@ -6,5 +6,5 @@ use Server::Lite;
 
 ## start the server
 my $pid = Server::Lite->new->background();
-Server::Lite->write_pid($$) or die "issues: $!\n";
+$pid->run;
 print "Use (sudo) kill $pid to stop server.\n";

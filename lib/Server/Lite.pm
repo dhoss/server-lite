@@ -23,20 +23,9 @@ GetOptions(
     "l|log=s"         => \$log_file, 
     "dir=s"           => \$task_dir,   
     "pid|pidfile=s"   => \$pid_file,      
-    "p|port=i"          => \$port     
+    "p|port=i"        => \$port     
 );
 
-sub write_pid {
-    my ($self, $pid) = shift;
-    my $pidfile = IO::File->new;
-
-    if ( $pidfile->open("> $pid_file") ) {
-        print "pid is $pid\n";
-        print $pidfile $pid or die "Can't write pidfile: $!\n";
-        undef $pidfile;
-
-    }
-}
 
 my %dispatch = (
 
@@ -46,6 +35,12 @@ my %dispatch = (
 
 sub port {
     $port;
+}
+
+sub default_values {
+    return {
+        pid_file => $pid_file,
+    }
 }
 
 sub recorder_prefix {     # set the log file for recorder
