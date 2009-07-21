@@ -12,21 +12,41 @@ use FindBin qw/$Bin/;
 use Getopt::Long;
 use DateTime;
 
+$SIG{'TERM'} = \&graceful_shutdown;
+
 my $log_file = "server-lite.log";
+my $task_dir  = "$Bin/../tasks";
 my $pid_file = "server-lite.pid";
-my $port     = "80808";
+my $port     = "8080";
 
 GetOptions(
-    "l|log=s"         => \$log_file,    
+    "l|log=s"         => \$log_file, 
+    "dir=s"           => \$task_dir,   
     "pid|pidfile=s"   => \$pid_file,      
-    "p|port"          => \$port     
+    "p|port=i"          => \$port     
 );
-  
+
+sub write_pid {
+    my ($self, $pid) = shift;
+    my $pidfile = IO::File->new;
+
+    if ( $pidfile->open("> $pid_file") ) {
+        print "pid is $pid\n";
+        print $pidfile $pid or die "Can't write pidfile: $!\n";
+        undef $pidfile;
+
+    }
+}
+
 my %dispatch = (
 
     '/do' => \&handle_it,
 
 );
+
+sub port {
+    $port;
+}
 
 sub recorder_prefix {     # set the log file for recorder
     $log_file;
@@ -34,6 +54,10 @@ sub recorder_prefix {     # set the log file for recorder
 
 sub net_server {
     "Net::Server::PreForkSimple";
+}
+
+sub bad_request {
+    print "HTTP/1.0 404 Bad request\r\n";
 }
 
 sub handle_request {
@@ -81,7 +105,7 @@ sub handle_it {
     
     return if !ref $cgi;
     
-    my $dir             = "$Bin/../tasks" or $ARGV[1];      # second cmd line argument
+    my $dir             = $task_dir;      # second cmd line argument
     my $prefix          = $cgi->param('prefix');
     my $goes_in_queue   = $cgi->param('to_queue');
     my $to_url          = $cgi->param('url');
@@ -126,6 +150,20 @@ sub handle_it {
               
     }
     
+}
+
+sub graceful_shutdown {
+    my ($cgi) = shift;
+    
+    print "Shutting down...\n";
+    my $log = new IO::File;    # this needs to go in it's own dealy
+    if ( $log->open(">> $log_file") ) {
+            print $log DateTime->now . "\t" . $cgi->remote_addr . "\t" . "Shutting down\n" 
+                      or print $cgi->h1("Logging error: $!");
+            $log->close;
+    }
+    `rm $pid_file`;
+
 }
 
 1;
