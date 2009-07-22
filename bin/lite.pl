@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Server::Lite;
+use WMC::Server::Lite;
 
 ## start the server
 my $pid = Server::Lite->new->background();
