@@ -1,9 +1,9 @@
-package Server::Lite;
+package WMC::Server::Lite;
 
 use strict;
 use warnings;
 use HTTP::Server::Simple;
-use parent qw/HTTP::Server::Simple::Recorder HTTP::Server::Simple::CGI/;
+use parent qw/HTTP::Server::Simple::CGI/;
 use IO::Socket::SSL;
 use IO::File;
 use Regexp::Common qw /URI/;
@@ -12,51 +12,78 @@ use File::Spec;
 use Getopt::Long;
 use DateTime;
 use Log::Dispatch::Syslog;
+use Data::Dumper;
 
 $SIG{'TERM'} = \&graceful_shutdown;
 
-my $log_file = "server-lite.log";
-my $task_dir  = File::Spec->catdir('tasks');
-my $pid_file = "server-lite.pid";
-my $port     = "8080";
+sub new {
+    my $class = ref $_[0] || $_[0];
+    
+    my $log_file;
+    my $task_dir;
+    my $pid_file;
+    my $port;
+       
+    GetOptions(
+        "l|log=s"         => \$log_file, 
+        "d|dir=s"         => \$task_dir,   
+        "pid|pidfile=s"   => \$pid_file,      
+        "p|port=i"        => \$port     
+    );
 
-GetOptions(
-    "l|log=s"         => \$log_file, 
-    "dir=s"           => \$task_dir,   
-    "pid|pidfile=s"   => \$pid_file,      
-    "p|port=i"        => \$port     
-);
+	my $self = bless {
+		task_dir  => $task_dir,
+	    pidfile   => $pid_file,
+	    port      => $port,	
+	    logger    => Log::Dispatch::Syslog->new( 
+	                   name      => $log_file,
+                       min_level => 'info', ),
+    }, $class;
 
-if ($pid_file) {
-    my $fh = IO::File->new;
-    if (! $fh->open("> $pid_file") ) {
-        warn("Cannot open: $pid_file: $!");
-    }
-    print $fh $$+1 . "\n";
-    undef $fh;
+	$self;
+
+
 }
 
-my $logger = Log::Dispatch::Syslog->new( name      => File::Spec->curdir . $log_file,
-                                         min_level => 'info', );
+sub get_dispatch {
+     my ($self, $path) = @_;
+     my %dispatch = (
+        '/do' => \&handle_it,
+     );
+     
+     return $dispatch{$path};
 
+}
 
-my %dispatch = (
-
-    '/do' => \&handle_it,
-
-);
+sub background {
+    my $self = shift;
+    my $pid_file = $self->{pidfile};
+    my $pid = $self->SUPER::background;
+    
+    my $fh = IO::File->new;
+    if ($fh->open("> $pid_file") ) {
+        print $fh "$pid\n";
+        undef $fh;
+    } else {
+        warn("Cannot open: $pid_file: $!");
+    }
+    
+    $pid;
+        
+}
 
 sub port {
-    $port;
+    shift->{port};
 }
 
 
 
 sub recorder_prefix {     # set the log file for recorder
-    $log_file;
+    shift->{logger};
 }
 
 sub net_server {
+    my $self = shift;
     "Net::Server::PreForkSimple";
 }
 
@@ -68,12 +95,11 @@ sub handle_request {
     my ($self, $cgi) = @_;
    
     my $path = $cgi->path_info();
-    my $handler = $dispatch{$path};
+    my $handler = $self->get_dispatch($path);
 
     if (ref($handler) eq "CODE") {
          print "HTTP/1.0 200 OK\r\n";
          $handler->($cgi);
-         
          
      } else {
          print "HTTP/1.0 404 Not found\r\n";
@@ -109,10 +135,10 @@ sub handle_it {
     
     return if !ref $cgi;
     
-    my $dir             = $task_dir;      # second cmd line argument
-    my $prefix          = $cgi->param('prefix')   || "";
-    my $goes_in_queue   = $cgi->param('to_queue') || "";
-    my $to_url          = $cgi->param('url')      || "";
+    my $dir             = get_task_dir();
+    my $prefix          = $cgi->param('prefix');
+    my $goes_in_queue   = $cgi->param('to_queue');
+    my $to_url          = $cgi->param('url');
     my $now             = DateTime->now;
     my $activity        = File::Spec->catdir($dir, "$goes_in_queue$now");
     
@@ -121,21 +147,19 @@ sub handle_it {
     unless ( !$prefix or !$goes_in_queue or $to_url !~ /$RE{URI}{HTTP}/ ) {
     
         my $fh = new IO::File;
-        my $log = new IO::File;
-        print "activity file: $activity\n";
         if ( $fh->open(">$activity") ){
-        
+            
             print $fh "$goes_in_queue" or print $cgi->h1("File IO Error:$!");
             $fh->close;
             
-            $logger->log( level => "info", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
-                          "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" );
-             
+            get_logger->log( level => "info", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
+                          "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" ) or die "Error: $!";
             
         }
                       
         print $cgi->start_html('Success!'),
               $cgi->h1("Successfully handled request"),
+              $cgi->p("Dir: " . get_task_dir()),
               $cgi->end_html;
         
     } else {
@@ -144,20 +168,30 @@ sub handle_it {
               $cgi->h1("Missing required parameters!"),
               $cgi->end_html;
               
-        $logger->log( level => "error", message => $cgi->remote_addr . "\t" . "URL: $to_url\t" .
-                      "Prefix: $prefix \t Command: $goes_in_queue \t Status: Failed\n" );
+        get_logger->log( level => "error", message => $cgi->remote_addr . "\t" . "URL: $to_url\t" .
+                      "Prefix: $prefix \t Command: $goes_in_queue \t Status: Failed\n" ) or die "Error: $!";
                     
     }
     
 }
 
 sub graceful_shutdown {
-    my ($cgi) = shift;
+    my ($self, $cgi) = @_;
     
     print "Shutting down...\n";
-    $logger->log( level => "notice", message => "TERM received.  Shutting down..." );
-    `rm $pid_file`;
+    $self->{logger}->log( level => "notice", message => "TERM received.  Shutting down..." );
+    `rm $self->{pidfile}`;
 
+}
+
+sub get_logger {
+    my $self = shift;
+    return $self->{logger};
+}
+
+sub get_task_dir {
+    my $self = shift;
+    return $self->{task_dir};
 }
 
 1;
