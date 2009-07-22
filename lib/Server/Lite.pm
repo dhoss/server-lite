@@ -26,6 +26,14 @@ GetOptions(
     "p|port=i"        => \$port     
 );
 
+if ($pid_file) {
+    my $fh = IO::File->new;
+    if (! $fh->open("> $pid_file") ) {
+        warn("Cannot open: $pid_file: $!");
+    }
+    print $fh $$+1 . "\n";
+    undef $fh;
+}
 
 my %dispatch = (
 
@@ -37,11 +45,7 @@ sub port {
     $port;
 }
 
-sub default_values {
-    return {
-        pid_file => $pid_file,
-    }
-}
+
 
 sub recorder_prefix {     # set the log file for recorder
     $log_file;
