@@ -1,49 +1,23 @@
 package WMC::Server::Lite;
 
-use strict;
-use warnings;
+use Moose;
 use HTTP::Server::Simple;
-use parent qw/HTTP::Server::Simple::CGI/;
 use IO::Socket::SSL;
 use IO::File;
 use Regexp::Common qw /URI/;
 use DateTime;
 use File::Spec;
-use Getopt::Long;
-use DateTime;
 use Log::Dispatch::Syslog;
 use Data::Dumper;
+use MooseX::Types::Moose qw/Str Int/;
+use namespace::autoclean;
+
+extends { HTTP::Server::Simple::CGI };
+
 
 $SIG{'TERM'} = \&graceful_shutdown;
 
-sub new {
-    my $class = ref $_[0] || $_[0];
-    
-    my $log_file;
-    my $task_dir;
-    my $pid_file;
-    my $port;
-       
-    GetOptions(
-        "l|log=s"         => \$log_file, 
-        "d|dir=s"         => \$task_dir,   
-        "pid|pidfile=s"   => \$pid_file,      
-        "p|port=i"        => \$port     
-    );
 
-	my $self = bless {
-		task_dir  => $task_dir,
-	    pidfile   => $pid_file,
-	    port      => $port,	
-	    logger    => Log::Dispatch::Syslog->new( 
-	                   name      => $log_file,
-                       min_level => 'info', ),
-    }, $class;
-
-	$self;
-
-
-}
 
 sub get_dispatch {
      my ($self, $path) = @_;
@@ -53,42 +27,6 @@ sub get_dispatch {
      
      return $dispatch{$path};
 
-}
-
-sub background {
-    my $self = shift;
-    my $pid_file = $self->{pidfile};
-    my $pid = $self->SUPER::background;
-    
-    my $fh = IO::File->new;
-    if ($fh->open("> $pid_file") ) {
-        print $fh "$pid\n";
-        undef $fh;
-    } else {
-        warn("Cannot open: $pid_file: $!");
-    }
-    
-    $pid;
-        
-}
-
-sub port {
-    shift->{port};
-}
-
-
-
-sub recorder_prefix {     # set the log file for recorder
-    shift->{logger};
-}
-
-sub net_server {
-    my $self = shift;
-    "Net::Server::PreForkSimple";
-}
-
-sub bad_request {
-    print "HTTP/1.0 404 Bad request\r\n";
 }
 
 sub handle_request {
@@ -179,19 +117,10 @@ sub graceful_shutdown {
     my ($self, $cgi) = @_;
     
     print "Shutting down...\n";
-    $self->{logger}->log( level => "notice", message => "TERM received.  Shutting down..." );
+    $self->logger->log( level => "notice", message => "TERM received.  Shutting down..." );
     `rm $self->{pidfile}`;
 
 }
 
-sub get_logger {
-    my $self = shift;
-    return $self->{logger};
-}
-
-sub get_task_dir {
-    my $self = shift;
-    return $self->{task_dir};
-}
 
 1;
