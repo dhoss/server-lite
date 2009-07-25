@@ -12,12 +12,7 @@ use Data::Dumper;
 use MooseX::Types::Moose qw/Str Int/;
 use namespace::autoclean;
 
-extends { HTTP::Server::Simple::CGI };
-
-
-$SIG{'TERM'} = \&graceful_shutdown;
-
-
+extends qw/HTTP::Server::Simple::CGI/ ;
 
 sub get_dispatch {
      my ($self, $path) = @_;
@@ -112,15 +107,5 @@ sub handle_it {
     }
     
 }
-
-sub graceful_shutdown {
-    my ($self, $cgi) = @_;
-    
-    print "Shutting down...\n";
-    $self->logger->log( level => "notice", message => "TERM received.  Shutting down..." );
-    `rm $self->{pidfile}`;
-
-}
-
 
 1;
