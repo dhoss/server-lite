@@ -10,7 +10,7 @@ use MooseX::Types::Moose qw/Str Int/;
 with 'MooseX::Getopt';
  
 $SIG{'TERM'} = \&graceful_shutdown;
- 
+
 has logfile => (
     is => 'ro',
     isa => Str,
@@ -74,14 +74,15 @@ sub write_pid {
 }
  
 sub graceful_shutdown {
-    my ($self, $cgi) = @_;
+    my ($self, $server) = @_;
+    my $pid = $self->pid;
     
     print "Shutting down...\n";
-    $self->logger->log(
+    $server->logger->log(
         level => "notice",
         message => "TERM received. Shutting down..."
     );
-    `rm $self->pid_file`;
+    `rm $pid`;
  
 }
  
@@ -96,7 +97,7 @@ sub init {
     my $server = WMC::Server::Lite->new;
     my $logger = Log::Dispatch::Syslog->new(
      name => $self->logfile,
-                           min_level => 'info', );
+     min_level => 'info', );
     $server->logger($logger);
     $server->dir($self->task_dir);
     my $pid = $server->background();

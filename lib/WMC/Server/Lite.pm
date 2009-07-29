@@ -104,7 +104,7 @@ sub handle_it {
                       
         print $cgi->start_html('Success!'),
               $cgi->h1("Successfully handled request"),
-              $cgi->p("Dir: " . get_task_dir()),
+              $cgi->p("Dir: " . $self->task_dir),
               $cgi->end_html;
         
     } else {
