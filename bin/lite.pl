@@ -86,7 +86,7 @@ sub graceful_shutdown {
         level => "notice", 
         message => "TERM received.  Shutting down..."
     );
-    `rm $self->pidfile`;
+    `rm $self->pid_file`;
 
 }
 
@@ -108,7 +108,11 @@ sub init {
     $self->write_pid($pid);
 }
 
-init();
 
 1;
 
+package main;
+my $server = WMC::Server::Lite::App->new;
+$server->init;
+
+1;
