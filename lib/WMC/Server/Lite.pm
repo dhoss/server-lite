@@ -14,6 +14,18 @@ use namespace::autoclean;
 
 extends qw/HTTP::Server::Simple::CGI/ ;
 
+has logger  => (
+    is            => 'ro', 
+    isa           => 'Log::Dispatch',
+    required      => 1,
+);
+
+has dir  => (
+    is            => 'ro',
+    isa           => Str,
+    required      => 1,
+);
+
 sub get_dispatch {
      my ($self, $path) = @_;
      my %dispatch = (
@@ -32,7 +44,7 @@ sub handle_request {
 
     if (ref($handler) eq "CODE") {
          print "HTTP/1.0 200 OK\r\n";
-         $handler->($cgi);
+         $handler->($self, $cgi);
          
      } else {
          print "HTTP/1.0 404 Not found\r\n";
@@ -64,11 +76,11 @@ sub handle_request {
 #}
 
 sub handle_it {
-    my ($cgi) = @_;
+    my ($self, $cgi) = @_;
     
     return if !ref $cgi;
     
-    my $dir             = get_task_dir();
+    my $dir             = $self->dir;
     my $prefix          = $cgi->param('prefix');
     my $goes_in_queue   = $cgi->param('to_queue');
     my $to_url          = $cgi->param('url');
@@ -85,7 +97,7 @@ sub handle_it {
             print $fh "$goes_in_queue" or print $cgi->h1("File IO Error:$!");
             $fh->close;
             
-            get_logger->log( level => "info", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
+            $self->logger->log( level => "info", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
                           "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" ) or die "Error: $!";
             
         }
@@ -101,7 +113,7 @@ sub handle_it {
               $cgi->h1("Missing required parameters!"),
               $cgi->end_html;
               
-        get_logger->log( level => "error", message => $cgi->remote_addr . "\t" . "URL: $to_url\t" .
+        $self->logger->log( level => "error", message => $cgi->remote_addr . "\t" . "URL: $to_url\t" .
                       "Prefix: $prefix \t Command: $goes_in_queue \t Status: Failed\n" ) or die "Error: $!";
                     
     }

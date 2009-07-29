@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package Lite;
+package WMC::Server::Lite::App;
 use Moose;
 use namespace::autoclean;
 use WMC::Server::Lite;
@@ -47,19 +47,6 @@ has port     => (
     required      => 1,
 );
 
-has logger   => (
-    is            => 'ro', 
-    isa           => Int,
-    default       => 
-        sub {
-            my $self = shift;
-            Log::Dispatch::Syslog->new( 
-	                   name      => $self->logfile,
-                       min_level => 'info', )
-        },
-    required      => 1,
-);
-
 sub port {
     shift->port;
 }
@@ -95,14 +82,33 @@ sub graceful_shutdown {
     my ($self, $cgi) = @_;
     
     print "Shutting down...\n";
-    $self->logger->log( level => "notice", message => "TERM received.  Shutting down..." );
+    $self->logger->log( 
+        level => "notice", 
+        message => "TERM received.  Shutting down..."
+    );
     `rm $self->pidfile`;
 
 }
 
-## start the server
-my $server = WMC::Server::Lite->new;
-my $pid = $server->background();
-write_pid($pid);
+sub init {
+    my ($self) = shift;
+    ## start the server
+    if (!@ARGV) {
+        print "usage: perl bin/lite.pl [options]\n";
+        exit;
+    }
+    
+    my $server = WMC::Server::Lite->new;
+    my $logger = Log::Dispatch::Syslog->new( 
+    	                   name      => $self->logfile,
+                           min_level => 'info', );
+    $server->log($logger);
+    $server->dir($self->task_dir);
+    my $pid = $server->background();
+    $self->write_pid($pid);
+}
+
+init();
+
 1;
 
