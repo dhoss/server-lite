@@ -1,5 +1,5 @@
 package WMC::Server::Lite;
-
+ 
 use Moose;
 use HTTP::Server::Simple;
 use IO::Socket::SSL;
@@ -11,21 +11,21 @@ use Log::Dispatch::Syslog;
 use Data::Dumper;
 use MooseX::Types::Moose qw/Str Int/;
 use namespace::autoclean;
-
+ 
 extends qw/HTTP::Server::Simple::CGI/ ;
-
-has logger  => (
-    is            => 'ro', 
-    isa           => 'Log::Dispatch',
-    required      => 1,
+ 
+has logger => (
+    is => 'rw',
+    isa => 'Log::Dispatch::Output',
+    required => 1,
 );
-
-has dir  => (
-    is            => 'ro',
-    isa           => Str,
-    required      => 1,
+ 
+has dir => (
+    is => 'rw',
+    isa => Str,
+    required => 1,
 );
-
+ 
 sub get_dispatch {
      my ($self, $path) = @_;
      my %dispatch = (
@@ -33,15 +33,15 @@ sub get_dispatch {
      );
      
      return $dispatch{$path};
-
+ 
 }
-
+ 
 sub handle_request {
     my ($self, $cgi) = @_;
    
     my $path = $cgi->path_info();
     my $handler = $self->get_dispatch($path);
-
+ 
     if (ref($handler) eq "CODE") {
          print "HTTP/1.0 200 OK\r\n";
          $handler->($self, $cgi);
@@ -52,40 +52,40 @@ sub handle_request {
                $cgi->start_html('Not found'),
                $cgi->h1('Not found'),
                $cgi->end_html;
-
+ 
      }
          
 }
-
+ 
 #sub accept_hook {
-#    my $self = shift;
-#    my $fh   = $self->stdio_handle;
-
-#    $self->SUPER::accept_hook(@_);
-
-#    my $newfh =
-#    IO::Socket::SSL->start_SSL( $fh, 
-#        SSL_server    => 1,
-#        SSL_use_cert  => 1,
-#        SSL_cert_file => 'myserver.crt',
-#        SSL_key_file  => 'myserver.key',
-#    )
-#    or warn "problem setting up SSL socket: " . IO::Socket::SSL::errstr();
-
-#    $self->stdio_handle($newfh) if $newfh;
+# my $self = shift;
+# my $fh = $self->stdio_handle;
+ 
+# $self->SUPER::accept_hook(@_);
+ 
+# my $newfh =
+# IO::Socket::SSL->start_SSL( $fh,
+# SSL_server => 1,
+# SSL_use_cert => 1,
+# SSL_cert_file => 'myserver.crt',
+# SSL_key_file => 'myserver.key',
+# )
+# or warn "problem setting up SSL socket: " . IO::Socket::SSL::errstr();
+ 
+# $self->stdio_handle($newfh) if $newfh;
 #}
-
+ 
 sub handle_it {
     my ($self, $cgi) = @_;
     
     return if !ref $cgi;
     
-    my $dir             = $self->dir;
-    my $prefix          = $cgi->param('prefix');
-    my $goes_in_queue   = $cgi->param('to_queue');
-    my $to_url          = $cgi->param('url');
-    my $now             = DateTime->now;
-    my $activity        = File::Spec->catdir($dir, "$goes_in_queue$now");
+    my $dir = $self->dir;
+    my $prefix = $cgi->param('prefix');
+    my $goes_in_queue = $cgi->param('to_queue');
+    my $to_url = $cgi->param('url');
+    my $now = DateTime->now;
+    my $activity = File::Spec->catdir($dir, "$goes_in_queue$now");
     
     print $cgi->header;
     
@@ -119,5 +119,5 @@ sub handle_it {
     }
     
 }
-
+ 
 1;
