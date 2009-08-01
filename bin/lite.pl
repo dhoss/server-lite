@@ -87,7 +87,7 @@ sub graceful_shutdown {
 sub init {
     my ($self) = shift;
     ## start the server
-    if (!@ARGV) {
+    unless (@ARGV) {
         print "usage: perl bin/lite.pl [options]\n";
         exit;
     }
@@ -96,6 +96,7 @@ sub init {
     my $logger = Log::Dispatch::Syslog->new(
      name => $self->logfile,
      min_level => 'info', );
+    $logger->log( level => 'error', message => "data logging initiated");
     $server->logger($logger);
     $server->dir($self->task_dir);
     my $pid = $server->background();

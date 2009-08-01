@@ -97,14 +97,14 @@ sub handle_it {
             print $fh "$goes_in_queue" or print $cgi->h1("File IO Error:$!");
             $fh->close;
             
-            $self->logger->log( level => "info", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
-                          "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" ) or die "Error: $!";
+            $self->logger->log( level => "error", message =>$cgi->remote_addr . "\t" . "URL: $to_url\t" .
+                          "Prefix: $prefix \t Command: $goes_in_queue \t Status: Success\n" ); # or die "Error: $!";
             
         }
                       
         print $cgi->start_html('Success!'),
               $cgi->h1("Successfully handled request"),
-              $cgi->p("Dir: " . $self->task_dir),
+              $cgi->p("Dir: " . $self->dir),
               $cgi->end_html;
         
     } else {
