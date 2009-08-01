@@ -9,8 +9,6 @@ use MooseX::Types::Moose qw/Str Int/;
  
 with 'MooseX::Getopt';
  
-$SIG{'TERM'} = \&graceful_shutdown;
-
 has logfile => (
     is => 'ro',
     isa => Str,
@@ -94,7 +92,7 @@ sub init {
         exit;
     }
     
-    my $server = WMC::Server::Lite->new;
+    my $server = WMC::Server::Lite->new($self->port);
     my $logger = Log::Dispatch::Syslog->new(
      name => $self->logfile,
      min_level => 'info', );
@@ -106,5 +104,6 @@ sub init {
  
 my $server = __PACKAGE__->new_with_options;
 $server->init;
+$SIG{'TERM'} = sub { __PACKAGE__->graceful_shutdown($server) };
  
 1;
