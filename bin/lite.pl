@@ -3,7 +3,7 @@
 package Server::Lite::App;
 use Moose;
 use namespace::autoclean;
-use WMC::Server::Lite;
+use Server::Lite;
 use IO::File;
 use MooseX::Types::Moose qw/Str Int/;
  

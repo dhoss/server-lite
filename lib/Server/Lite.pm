@@ -8,7 +8,6 @@ use Regexp::Common qw /URI/;
 use DateTime;
 use File::Spec;
 use Log::Dispatch::Syslog;
-use Data::Dumper;
 use MooseX::Types::Moose qw/Str Int/;
 use namespace::autoclean;
  
@@ -119,5 +118,47 @@ sub handle_it {
     }
     
 }
- 
+
+=head1 NAME
+
+Server::Simple
+
+=cut
+
+=head1 DESCRIPTION
+
+A really simple server + web application implementation with SSL, HTTP authentication *and* preforking options
+
+=cut 
+
+=head1 SYNOPSIS
+
+    perl  bin/lite.pl --pid /tmp/server-lite.pid --logfile local1 --dir tasks/ --port 3001
+
+=cut
+
+=head1 OPTIONS
+
+pid: specify a pidfile for the server
+
+logfile: a valid syslog service to connect to
+
+dir: the dir to which command queue files will be written to
+
+port: a port to listen to 
+
+=cut
+
+=head1 SEE ALSO
+
+Moose, HTTP::Server::Simple, Log::Dispatch::Syslog
+
+=cut
+
+=head1 AUTHOR
+
+Devin Austin <dhoss@cpan.org>, Jay Kuri <jayk@cpan.org>
+
+=cut
+
 1;
