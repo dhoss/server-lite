@@ -119,6 +119,8 @@ sub handle_it {
     
 }
 
+# ABSTRACT: A really simple server + web application implementation with SSL, HTTP authentication *and* preforking options
+
 =head1 NAME
 
 Server::Simple
