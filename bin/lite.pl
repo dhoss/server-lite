@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
  
-package WMC::Server::Lite::App;
+package Server::Lite::App;
 use Moose;
 use namespace::autoclean;
 use WMC::Server::Lite;
@@ -92,7 +92,7 @@ sub init {
         exit;
     }
     
-    my $server = WMC::Server::Lite->new($self->port);
+    my $server = Server::Lite->new($self->port);
     my $logger = Log::Dispatch::Syslog->new(
      name => $self->logfile,
      min_level => 'info', );

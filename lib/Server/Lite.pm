@@ -1,4 +1,4 @@
-package WMC::Server::Lite;
+package Server::Lite;
  
 use Moose;
 use HTTP::Server::Simple;
